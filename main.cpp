@@ -25,6 +25,7 @@ void medianFilterG(Mat&, Mat&, int, int);
 void medianFilterB(Mat&, Mat&, int, int);
 void medianFilterRGB(Mat&, Mat&, int, int);
 void padImage(Mat&, Mat&, int, int, int, int);
+void histogramExpansion(Mat&, vector<uchar>&, vector<uchar>&, vector<uchar>&, vector<uchar>&);
 bool readMask(vector<float>&, vector<int>&, const char*);
 bool correlation(Mat&, Mat&, const char*);
 
