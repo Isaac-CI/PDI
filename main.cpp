@@ -4,11 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-
-#define MASK_PATH = "";
-#define OFFSET = 0;
-#define M = 3;  // M deve ser ímpar, por ser a quantidade de linhas do filtro da mediana 
-#define N = 11; // N deve ser ímpar, por ser a quantidade de colunas do filtro da mediana
+#include <chrono>
 
 using namespace cv;
 using namespace std;
@@ -25,13 +21,14 @@ void medianFilterG(Mat&, Mat&, int, int);
 void medianFilterB(Mat&, Mat&, int, int);
 void medianFilterRGB(Mat&, Mat&, int, int);
 void padImage(Mat&, Mat&, int, int, int, int);
-void histogramExpansion(Mat&, vector<uchar>&, vector<uchar>&, vector<uchar>&, vector<uchar>&);
+void histogramExpansion(Mat&, Mat&);
 bool readMask(vector<float>&, vector<int>&, const char*);
-bool correlation(Mat&, Mat&, const char*);
+bool correlation_abs(Mat&, Mat&, const char*);
+bool correlation_sat(Mat&, Mat&, const char*);
 
 int main()
 {
-    Mat image = imread("testpat.1k.color2.tif"); // read the image file
+    Mat image = imread("inputs\\testpat.1k.color2.tif"); // read the image file
 
     if (image.empty()) // check for failure
     {
@@ -40,10 +37,6 @@ int main()
     }
 
     cout << "Image size: " << image.size() <<  endl;
-
-    
-    namedWindow("Original Image", WINDOW_AUTOSIZE);
-    imshow("Original Image", image);
 
     int rows = image.rows;
     int cols = image.cols;
@@ -76,139 +69,156 @@ int main()
     }
 
     
-    namedWindow("Blue Channel", WINDOW_AUTOSIZE);
-    imshow("Blue Channel", blueImage);
-
-    namedWindow("Green Channel", WINDOW_AUTOSIZE);
-    imshow("Green Channel", greenImage);
-
-    namedWindow("Red Channel", WINDOW_AUTOSIZE);
-    imshow("Red Channel", redImage);
+    imwrite("outputs\\blue_channel.png", blueImage);
+    imwrite("outputs\\green_channel.png", greenImage);
+    imwrite("outputs\\red_channel.png", redImage);
 
     Mat imageYIQ;
+    cout << "RGB to YIQ" << endl;
+    rgbToYIQ(image, imageYIQ);
+    imwrite("outputs\\YIQ_as_BGR.png", imageYIQ);
+
     Mat negAuxY;
     Mat negY;
-    Mat negR;
-    Mat negG;
-    Mat negB;
-    Mat negRGB;
-    Mat restored;
-    Mat medianR;
-    Mat medianG;
-    Mat medianB;
-    Mat medianRGB;
-    Mat paddedImage;
-    
-    rgbToYIQ(image, imageYIQ);
-    namedWindow("YIQ as BGR", WINDOW_AUTOSIZE);
-    imshow("YIQ as BGR", imageYIQ);
-
+    cout << "Negative Y" << endl;
     negativeY(imageYIQ, negAuxY);
     yiqToRgb(negAuxY, negY);
-    namedWindow("Negative Y", WINDOW_AUTOSIZE);
-    imshow("Negative Y", negY);
+    imwrite("outputs\\negative_Y.png", negY);
 
+    Mat negR;
+    cout << "Negative R" << endl;
     negativeR(image, negR);
-    namedWindow("Negative R", WINDOW_AUTOSIZE);
-    imshow("Negative R", negR);
+    imwrite("outputs\\negative_R.png", negR);
 
+    Mat negG;
+    cout << "Negative G" << endl;
     negativeG(image, negG);
-    namedWindow("Negative G", WINDOW_AUTOSIZE);
-    imshow("Negative G", negG);
+    imwrite("outputs\\negative_G.png", negG);
 
+    Mat negB;
+    cout << "Negative B" << endl;
     negativeB(image, negB);
-    namedWindow("Negative B", WINDOW_AUTOSIZE);
-    imshow("Negative B", negB);
+    imwrite("outputs\\negative_B.png", negB);
 
+    Mat negRGB;
+    cout << "Negative RGB" << endl;
     negativeRGB(image, negRGB);
-    namedWindow("Negative RGB", WINDOW_AUTOSIZE);
-    imshow("Negative RGB", negRGB);
+    imwrite("outputs\\negative_RGB.png", negRGB);
 
+    Mat medianR;
+    cout << "Median R" << endl;
+    medianFilterR(image, medianR, 5, 7);
+    imwrite("outputs\\median_R.png", medianR);
 
-    // medianFilterR(image, medianR, 5, 7);
-    // namedWindow("Median R", WINDOW_AUTOSIZE);
-    // imshow("Median R", medianR);
+    Mat medianG;
+    cout << "Median G" << endl;
+    medianFilterG(image, medianG, 11, 7);
+    imwrite("outputs\\median_G.png", medianG);
 
-    // medianFilterG(image, medianG, 5, 7);
-    // namedWindow("Median G", WINDOW_AUTOSIZE);
-    // imshow("Median G", medianG);
+    Mat medianB;
+    cout << "Median B" << endl;
+    medianFilterB(image, medianB, 25, 1);
+    imwrite("outputs\\median_B.png", medianB);
 
-    // medianFilterB(image, medianB, 5, 7);
-    // namedWindow("Median B", WINDOW_AUTOSIZE);
-    // imshow("Median B", medianB);
-
-    // medianFilterRGB(image, medianRGB, 5, 7);
-    // namedWindow("Median RGB", WINDOW_AUTOSIZE);
-    // imshow("Median RGB", medianRGB);
+    Mat medianRGB;
+    cout << "Median RGB" << endl;
+    medianFilterRGB(image, medianRGB, 1, 25);
+    imwrite("outputs\\median_RGB.png", medianRGB);
     
+    Mat paddedImage;
+    cout << "Padding Image" << endl;
     padImage(image, paddedImage, 25, 25, 12, 12);
-    namedWindow("Padded Image", WINDOW_AUTOSIZE);
-    imshow("Padded Image", paddedImage);
+    imwrite("outputs\\padded_image.png", paddedImage);
 
+    Mat restored;
+    cout << "Restoring Original Image" << endl;
     yiqToRgb(imageYIQ, restored);
-    namedWindow("Restored RGB", WINDOW_AUTOSIZE);
-    imshow("Restored RGB", restored);
+    imwrite("outputs\\restored_image.png", restored);
 
     Mat box1x11;
-    bool isCorrelationValid = correlation(image, box1x11, "masks\\box1x11.txt");
+    Mat box11x1;
+    cout << "Mean11x1(Mean 1x11)" << endl;
+    auto cascatedBoxStart = chrono::high_resolution_clock::now();
+    bool isCorrelationValid = correlation_sat(image, box1x11, "masks\\box1x11.txt");
     if(isCorrelationValid){
-        Mat box11x1;
-        isCorrelationValid = correlation(box1x11, box11x1, "masks\\box11x1.txt");
+        isCorrelationValid = correlation_sat(box1x11, box11x1, "masks\\box11x1.txt");
         if(isCorrelationValid){
-            namedWindow("Box 1x11(Box 11x1)", WINDOW_AUTOSIZE);
-            imshow("Box 1x11(Box 11x1)", box11x1);
+            auto cascatedBoxFinish = chrono::high_resolution_clock::now();
+            auto cascatedBoxDuration = chrono::duration_cast<chrono::microseconds>(cascatedBoxFinish - cascatedBoxStart);
+            imwrite("outputs\\box_11x1(box 1x11).png", box11x1);
+            cout << "Tempo de processamento dos filtros box 1x11 e 11x1 em cascata, em us: " << cascatedBoxDuration.count() << "us" << endl;
         }else
             cout << "invalid correlation 11x1" << endl;
     }else
         cout << "invalid correlation 1x11" << endl;
 
     Mat box11x11;
-    isCorrelationValid = correlation(image, box11x11, "masks\\box11x11.txt");
+    cout << "Mean 11x11" << endl;
+    auto boxStart = chrono::high_resolution_clock::now();
+    isCorrelationValid = correlation_sat(image, box11x11, "masks\\box11x11.txt");
     if(isCorrelationValid){
-        namedWindow("Box 11x11", WINDOW_AUTOSIZE);
-        imshow("Box 11x11", box11x11);
+        auto boxFinish = chrono::high_resolution_clock::now();
+        auto boxDuration = chrono::duration_cast<chrono::microseconds>(boxFinish - boxStart);
+        imwrite("outputs\\box_11x11.png", box11x11);
+        cout << "Tempo de processamento do filtro box 11x11, em us: " << boxDuration.count() << "us" << endl;
     }else
         cout << "invalid correlation 11x11" << endl;
 
-
     Mat sum2x4;
-    isCorrelationValid = correlation(image, sum2x4, "masks\\sum2x4.txt");
+    cout << "Sum 2x4" << endl;
+    isCorrelationValid = correlation_sat(image, sum2x4, "masks\\sum2x4.txt");
     if(isCorrelationValid){
-        namedWindow("Sum 2x4", WINDOW_AUTOSIZE);
-        imshow("Sum 2x4", sum2x4);
+        imwrite("outputs\\sum_2x4.png", sum2x4);
     }else
         cout << "invalid correlation" << endl;
 
     Mat sum4x2;
-    isCorrelationValid = correlation(image, sum4x2, "masks\\sum4x2.txt");
+    cout << "Sum 4x2" << endl;
+    isCorrelationValid = correlation_sat(image, sum4x2, "masks\\sum4x2.txt");
     if(isCorrelationValid){
-        namedWindow("Sum 4x2", WINDOW_AUTOSIZE);
-        imshow("Sum 4x2", sum4x2);
+        imwrite("outputs\\sum_4x2.png", sum4x2);
     }else
         cout << "invalid correlation" << endl;
 
-    Mat emboss;
-    isCorrelationValid = correlation(image, emboss, "masks\\emboss.txt");
+    Mat emboss_0;
+    cout << "Emboss offset: 0" << endl;
+    isCorrelationValid = correlation_abs(image, emboss_0, "masks\\emboss.txt");
     if(isCorrelationValid){
-        namedWindow("Emboss", WINDOW_AUTOSIZE);
-        imshow("Emboss", emboss);
+        imwrite("outputs\\emboss.png", emboss_0);
     }
 
-    Mat vSobel;
-    isCorrelationValid = correlation(image, vSobel, "masks\\vSobel.txt");
+    Mat emboss_64;
+    cout << "Emboss offset: 64" << endl;
+    isCorrelationValid = correlation_abs(image, emboss_64, "masks\\emboss_64.txt");
+    if(isCorrelationValid){
+        imwrite("outputs\\emboss_64.png", emboss_64);
+    }    
+
+    Mat emboss_128;
+    cout << "Emboss offset: 128" << endl;
+    isCorrelationValid = correlation_abs(image, emboss_128, "masks\\emboss_128.txt");
+    if(isCorrelationValid){
+        imwrite("outputs\\emboss_128.png", emboss_128);
+    }
+
+    Mat vSobel, vSobelHistogramExpansion;
+    cout << "Vertical Sobel" << endl;
+    isCorrelationValid = correlation_abs(image, vSobel, "masks\\vSobel.txt");
         if(isCorrelationValid){
-        namedWindow("Sobel Vertical", WINDOW_AUTOSIZE);
-        imshow("Sobel Vertical", vSobel);
+        imwrite("outputs\\vertical_sobel.png", vSobel);
+        histogramExpansion(vSobel, vSobelHistogramExpansion);
+        imwrite("outputs\\vertical_sobel_histogram_expansion.png", vSobelHistogramExpansion);
     }
 
-    Mat hSobel;
-    isCorrelationValid = correlation(image, hSobel, "masks\\hSobel.txt");
+    Mat hSobel, hSobelHistogramExpansion;
+    cout << "Horizontal Sobel" << endl;
+    isCorrelationValid = correlation_abs(image, hSobel, "masks\\hSobel.txt");
         if(isCorrelationValid){
-        namedWindow("Sobel Horizontal", WINDOW_AUTOSIZE);
-        imshow("Sobel Horizontal", hSobel);
+        imwrite("outputs\\horizontal_sobel.png", hSobel);
+        histogramExpansion(hSobel, hSobelHistogramExpansion);
+        imwrite("outputs\\horizontal_sobel_histogram_expansion.png", hSobelHistogramExpansion);
     }
 
-    waitKey(0); // wait for a key press
     return 0;
 }
 
@@ -546,7 +556,70 @@ bool readMask(vector<float>& Mask, vector<int>& args, const char *path){
     return true;
 }
 
-bool correlation(Mat& src, Mat& dst, const char* path){
+bool correlation_abs(Mat& src, Mat& dst, const char* path){
+    vector<float> mask;
+    vector<int> args;
+    
+    if(readMask(mask, args, path)){
+        if(args.size() == 5){// 5 args are needed for the correlation, being the number of rows(m), number of columns(n), pivot row(pi), pivot cloumn(pj) and offset value.
+            if(mask.size() == args.at(0) * args.at(1)){
+                CV_Assert(src.channels() == 3); // Input image should have 3 channels (RGB)
+                Mat paddedSrc;
+                padImage(src, paddedSrc, args.at(0), args.at(1), args.at(2), args.at(3));
+                dst.create(src.size(), CV_8UC3);
+
+                Mat windowB, windowG, windowR;
+                windowB.create(args.at(0), args.at(1), CV_32FC1);
+                windowG.create(args.at(0), args.at(1), CV_32FC1);
+                windowR.create(args.at(0), args.at(1), CV_32FC1);
+                float r, g, b;
+
+                int i = 0;
+                int j = 0;
+
+                while(i < src.rows){
+                    j = 0;
+                    while(j < src.cols){
+                        for(int k = 0; k < args.at(0); k++){
+                            for(int l = 0; l < args.at(1); l++){
+                                windowB.at<Vec<float, 1>>(k, l) = paddedSrc.at<Vec3b>(i + k, j + l)[0];//blue channel
+                                windowG.at<Vec<float, 1>>(k, l) = paddedSrc.at<Vec3b>(i + k, j + l)[1];//green channel
+                                windowR.at<Vec<float, 1>>(k, l) = paddedSrc.at<Vec3b>(i + k, j + l)[2];//red channel
+                            }
+                        }
+
+                        b = dotProduct(mask, windowB);
+                        g = dotProduct(mask, windowG);
+                        r = dotProduct(mask, windowR);
+
+                        b = (b < 0) ? -b : b;
+                        g = (g < 0) ? -g : g;
+                        r = (r < 0) ? -r : r;
+
+                        b += args.at(4);
+                        g += args.at(4);
+                        r += args.at(4);
+
+                        b = (b > 255) ? 255 : b;
+                        g = (g > 255) ? 255 : g;
+                        r = (r > 255) ? 255 : r;
+
+                        dst.at<Vec3b>(i,j) = Vec3b((uchar)b, (uchar)g, (uchar)r);
+                        
+                        j++;
+                    }
+                    i++;
+                }
+                return true;
+            } else
+                cout << "Invalid mask size" << endl;
+        } else
+            cout << "Invalid arg size" << endl;
+    }
+    return false;
+}
+
+bool correlation_sat(Mat& src, Mat& dst, const char* path){
     vector<float> mask;
     vector<int> args;
     
@@ -585,16 +658,24 @@ bool correlation(Mat& src, Mat& dst, const char* path){
                         //     cout << "\n";
                         // }
 
-                        b = dotProduct(mask, windowB) + args.at(4);
-                        g = dotProduct(mask, windowG) + args.at(4);
-                        r = dotProduct(mask, windowR) + args.at(4);
-                        b = (b < 0) ? -b : b;
-                        g = (g < 0) ? -g : g;
-                        r = (r < 0) ? -r : r;
+                        b = dotProduct(mask, windowB);
+                        g = dotProduct(mask, windowG);
+                        r = dotProduct(mask, windowR);
+
+                        b = (b < 0) ? 0 : b;
+                        g = (g < 0) ? 0 : g;
+                        r = (r < 0) ? 0 : r;
+
+                        b += args.at(4);
+                        g += args.at(4);
+                        r += args.at(4);
+
                         b = (b > 255) ? 255 : b;
                         g = (g > 255) ? 255 : g;
                         r = (r > 255) ? 255 : r;
+                        
                         dst.at<Vec3b>(i,j) = Vec3b((uchar)b, (uchar)g, (uchar)r);
+                        
                         j++;
                     }
                     i++;
@@ -608,31 +689,45 @@ bool correlation(Mat& src, Mat& dst, const char* path){
     return false;
 }
 
-void histogramExpansion(Mat& src, vector<uchar>& redLevels, vector<uchar>& greenLevels, vector<uchar>& blueLevels, vector<uchar>& grayLevels){
+void histogramExpansion(Mat& src, Mat& dst){
     CV_Assert(src.channels() == 3); // Input image should have 3 channels (RGB)
-    redLevels.clear();
-    greenLevels.clear();
-    blueLevels.clear();
-    grayLevels.clear();
 
-    for(int i = 0; i < 256; i++){
-        redLevels.push_back(0);
-        greenLevels.push_back(0);
-        blueLevels.push_back(0);
-        grayLevels.push_back(0);
-    }
+    dst.create(src.size(), CV_8UC3);
     
+    uchar rmax[4] = {0, 0, 0, 0};
+    uchar rmin[4] = {255, 255, 255, 255};
+    uchar red, green, blue;
+
+    cout << "rmin: [" << (int)rmin[0] << "," << (int)rmin[1] <<","<< (int)rmin[2] << "]"
+         << " rmax: [" << (int)rmax[0] << "," << (int)rmax[1] << "," << (int)rmax[2] << "]" << endl;
+
     for(int i = 0; i < src.rows; i++){
         for(int j = 0; j < src.cols; j++){
-            uchar r = src.at<Vec3b>(i,j)[2];
-            uchar g = src.at<Vec3b>(i,j)[1];
-            uchar b = src.at<Vec3b>(i,j)[0];
-            uchar gray = (r > g) ? (g > b) ? b : g : (r > b) ? b : r;
+            red = src.at<Vec3b>(i,j)[2];
+            green = src.at<Vec3b>(i,j)[1];
+            blue = src.at<Vec3b>(i,j)[0];
 
-            redLevels[r]++;
-            greenLevels[g]++;
-            blueLevels[b]++;
-            greenLevels[gray]++;
+            rmax[0] = (rmax[0] < red) ? red : rmax[0];
+            rmin[0] = (rmin[0] > red) ? red : rmin[0];
+            rmax[1] = (rmax[1] < green) ? green : rmax[1];
+            rmin[1] = (rmin[1] > green) ? green : rmin[1];
+            rmax[2] = (rmax[2] < blue) ? blue : rmax[2];
+            rmin[2] = (rmin[2] > blue) ? blue : rmin[2];
+        }
+    }
+
+    cout << "rmin: [" << (int)rmin[0] << "," << (int)rmin[1] <<","<< (int)rmin[2] << "]"
+         << " rmax: [" << (int)rmax[0] << "," << (int)rmax[1] << "," << (int)rmax[2] << "]" << endl;
+
+    for(int i = 0; i < src.rows; i++){
+        for(int j = 0; j < src.cols; j++){
+            red = src.at<Vec3b>(i,j)[2];
+            green = src.at<Vec3b>(i,j)[1];
+            blue = src.at<Vec3b>(i,j)[0];
+            
+            dst.at<Vec3b>(i,j) = Vec3b((uchar)round(255.0*(blue - rmin[2])/(rmax[2] - rmin[2])),
+                                        (uchar)round(255.0*(green - rmin[1])/(rmax[1] - rmin[1])), 
+                                        (uchar)round(255.0*(red - rmin[0])/(rmax[0] - rmin[0])));
         }
     }
 }
