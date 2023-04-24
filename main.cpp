@@ -22,6 +22,7 @@ void medianFilterB(Mat&, Mat&, int, int);
 void medianFilterRGB(Mat&, Mat&, int, int);
 void padImage(Mat&, Mat&, int, int, int, int);
 void histogramExpansion(Mat&, Mat&);
+void showImage(Mat&, const char*);
 bool readMask(vector<float>&, vector<int>&, const char*);
 bool correlation_abs(Mat&, Mat&, const char*);
 bool correlation_sat(Mat&, Mat&, const char*);
@@ -35,43 +36,6 @@ int main()
         cout << "Could not open or find the image" << endl;
         return -1;
     }
-
-    cout << "Image size: " << image.size() <<  endl;
-
-    int rows = image.rows;
-    int cols = image.cols;
-
-    Mat blue(rows, cols, CV_8UC1); // 2D array for blue channel
-    Mat green(rows, cols, CV_8UC1); // 2D array for green channel
-    Mat red(rows, cols, CV_8UC1); // 2D array for red channel
-    Mat blueImage(rows, cols, CV_8UC3);
-    Mat greenImage(rows, cols, CV_8UC3);
-    Mat redImage(rows, cols, CV_8UC3);
-    // iterate over each pixel and store its RGB value in the corresponding array
-    for (int i = 0; i < rows; i++)
-    {
-        for (int j = 0; j < cols; j++)
-        {
-            Vec3b intensity = image.at<Vec3b>(i, j);
-            blue.at<uchar>(i, j) = intensity.val[0];
-            green.at<uchar>(i, j) = intensity.val[1];
-            red.at<uchar>(i, j) = intensity.val[2];
-            blueImage.at<Vec3b>(i, j)[0] = intensity.val[0];
-            blueImage.at<Vec3b>(i, j)[1] = 0;
-            blueImage.at<Vec3b>(i, j)[2] = 0;
-            greenImage.at<Vec3b>(i, j)[0] = 0;
-            greenImage.at<Vec3b>(i, j)[1] = intensity.val[1];
-            greenImage.at<Vec3b>(i, j)[2] = 0;
-            redImage.at<Vec3b>(i, j)[0] = 0;
-            redImage.at<Vec3b>(i, j)[1] = 0;
-            redImage.at<Vec3b>(i, j)[2] = intensity.val[2];
-        }
-    }
-
-    
-    imwrite("outputs\\blue_channel.png", blueImage);
-    imwrite("outputs\\green_channel.png", greenImage);
-    imwrite("outputs\\red_channel.png", redImage);
 
     Mat imageYIQ;
     cout << "RGB to YIQ" << endl;
@@ -218,7 +182,10 @@ int main()
         histogramExpansion(hSobel, hSobelHistogramExpansion);
         imwrite("outputs\\horizontal_sobel_histogram_expansion.png", hSobelHistogramExpansion);
     }
-
+    showImage(image, "Original");
+    showImage(paddedImage, "Padded Image");
+    showImage(restored, "Restored");
+    waitKey(0);
     return 0;
 }
 
@@ -689,6 +656,10 @@ bool correlation_sat(Mat& src, Mat& dst, const char* path){
     return false;
 }
 
+void showImage(Mat& src, const char* name){
+    imshow(name, src);
+}
+
 void histogramExpansion(Mat& src, Mat& dst){
     CV_Assert(src.channels() == 3); // Input image should have 3 channels (RGB)
 
@@ -697,9 +668,6 @@ void histogramExpansion(Mat& src, Mat& dst){
     uchar rmax[4] = {0, 0, 0, 0};
     uchar rmin[4] = {255, 255, 255, 255};
     uchar red, green, blue;
-
-    cout << "rmin: [" << (int)rmin[0] << "," << (int)rmin[1] <<","<< (int)rmin[2] << "]"
-         << " rmax: [" << (int)rmax[0] << "," << (int)rmax[1] << "," << (int)rmax[2] << "]" << endl;
 
     for(int i = 0; i < src.rows; i++){
         for(int j = 0; j < src.cols; j++){
@@ -715,9 +683,6 @@ void histogramExpansion(Mat& src, Mat& dst){
             rmin[2] = (rmin[2] > blue) ? blue : rmin[2];
         }
     }
-
-    cout << "rmin: [" << (int)rmin[0] << "," << (int)rmin[1] <<","<< (int)rmin[2] << "]"
-         << " rmax: [" << (int)rmax[0] << "," << (int)rmax[1] << "," << (int)rmax[2] << "]" << endl;
 
     for(int i = 0; i < src.rows; i++){
         for(int j = 0; j < src.cols; j++){
