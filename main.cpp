@@ -142,27 +142,13 @@ int main()
     if(isCorrelationValid){
         imwrite("outputs\\sum_4x2.png", sum4x2);
     }else
-        cout << "invalid correlation" << endl;
+        cout << "invalid correlation" << endl; 
 
-    Mat emboss_0;
-    cout << "Emboss offset: 0" << endl;
-    isCorrelationValid = correlation_abs(image, emboss_0, "masks\\emboss.txt");
+    Mat emboss;
+    cout << "Emboss" << endl;
+    isCorrelationValid = correlation_abs(image, emboss, "masks\\emboss.txt");
     if(isCorrelationValid){
-        imwrite("outputs\\emboss.png", emboss_0);
-    }
-
-    Mat emboss_64;
-    cout << "Emboss offset: 64" << endl;
-    isCorrelationValid = correlation_abs(image, emboss_64, "masks\\emboss_64.txt");
-    if(isCorrelationValid){
-        imwrite("outputs\\emboss_64.png", emboss_64);
-    }    
-
-    Mat emboss_128;
-    cout << "Emboss offset: 128" << endl;
-    isCorrelationValid = correlation_abs(image, emboss_128, "masks\\emboss_128.txt");
-    if(isCorrelationValid){
-        imwrite("outputs\\emboss_128.png", emboss_128);
+        imwrite("outputs\\emboss.png", emboss);
     }
 
     Mat vSobel, vSobelHistogramExpansion;
